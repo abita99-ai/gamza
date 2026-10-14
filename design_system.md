@@ -53,14 +53,15 @@
   - `padding: 4px 10px`, `border-radius: 6px`, `font-size: 12px`, `font-weight: 700`
   - `.status-sale`: 판매중
   - `.status-reserved`: 예약중
-  - `.status-done`: 거래 완료
+- **카테고리 분류**:
+  - `전체`, `디지털기기`, `가구/인테리어`, `의류`, `생활가전`, `도서/티켓`, `반려동물 용품`, `실험실과학도구`, `기타`
 
 ## 4. 데이터 스키마 (Product Item)
 ```javascript
 {
   id: 1,
   title: "아이패드 에어 5세대 M1 64GB 스페이스그레이 풀박스",
-  category: "디지털기기",
+  category: "디지털기기", // "디지털기기" | "가구/인테리어" | "의류" | "생활가전" | "도서/티켓" | "반려동물 용품" | "실험실과학도구" | "기타"
   price: 540000,
   location: "역삼1동",
   uploadedAt: "10분 전",
