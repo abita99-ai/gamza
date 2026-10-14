@@ -1,0 +1,1902 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>감자 - 상품 상세 팝업 프로토타입</title>
+  <style>
+    /* =============================================================
+       1. 디자인 시스템 토큰 (CSS Variables - design_system.md 준수)
+       ============================================================= */
+    :root {
+      --primary-color: #8D5B4C;        /* 구운 감자 메인 브라운 */
+      --primary-hover: #734537;        /* 호버 시 진한 브라운 */
+      --primary-light: #F3EAE3;        /* 연한 감자 크림 */
+      --accent-gold: #E5A93C;          /* 알감자 옐로우 포인트 */
+      --accent-gold-hover: #CF9227;
+
+      --bg-main: #FDFBF8;              /* 전체 배경 밝은 크림베이지 */
+      --bg-surface: #FFFFFF;           /* 카드 및 모달 배경 흰색 */
+      --bg-input: #F7F5F2;             /* 인풋 배경 */
+
+      --text-main: #2C2523;            /* 메인 텍스트 진한 흑갈색 */
+      --text-sub: #7A706A;             /* 서브 텍스트 그레이 */
+      --text-muted: #A39B94;           /* 날짜/힌트 텍스트 */
+      --border-color: #EFE9E2;         /* 테두리선 */
+      --border-focus: #8D5B4C;
+
+      /* 판매 상태 색상 (필수 규격) */
+      --status-sale-bg: #EAF7EE;       /* 판매중 연한 초록 */
+      --status-sale-text: #1B7C3E;
+      --status-reserved-bg: #FFF3E0;   /* 예약중 연한 오렌지 */
+      --status-reserved-text: #E65100;
+      --status-done-bg: #F0F0F0;       /* 거래 완료 연한 회색 */
+      --status-done-text: #757575;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --radius-xl: 24px;
+      --radius-full: 9999px;
+
+      --shadow-sm: 0 2px 8px rgba(115, 69, 55, 0.06);
+      --shadow-md: 0 6px 20px rgba(115, 69, 55, 0.08);
+      --shadow-lg: 0 12px 36px rgba(115, 69, 55, 0.16);
+      --shadow-modal: 0 24px 60px rgba(71, 38, 28, 0.22);
+    }
+
+    /* =============================================================
+       2. 기본 리셋 및 글로벌 스타일
+       ============================================================= */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    body.modal-open {
+      overflow: hidden; /* 모달 열릴 때 백그라운드 스크롤 방지 */
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button {
+      font-family: inherit;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      background: none;
+    }
+
+    /* =============================================================
+       3. 공통 컴포넌트 규격 (.btn, .status-badge)
+       ============================================================= */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 44px;
+      padding: 0 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background-color: var(--primary-color);
+      color: #FFFFFF;
+    }
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-outline {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+    .btn-outline:hover {
+      background-color: var(--bg-input);
+      border-color: var(--text-muted);
+    }
+
+    .btn-gold {
+      background-color: var(--accent-gold);
+      color: #FFFFFF;
+    }
+    .btn-gold:hover {
+      background-color: var(--accent-gold-hover);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* 판매 상태 뱃지 */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      line-height: 1;
+    }
+
+    .status-badge.status-sale {
+      background-color: var(--status-sale-bg);
+      color: var(--status-sale-text);
+    }
+
+    .status-badge.status-reserved {
+      background-color: var(--status-reserved-bg);
+      color: var(--status-reserved-text);
+    }
+
+    .status-badge.status-done {
+      background-color: var(--status-done-bg);
+      color: var(--status-done-text);
+    }
+
+    /* 카테고리 태그 */
+    .category-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      background-color: var(--primary-light);
+      color: var(--primary-color);
+      letter-spacing: -0.2px;
+      line-height: 1;
+    }
+
+    /* =============================================================
+       4. 상단 네비게이션 & 테스트 헤더
+       ============================================================= */
+    .test-header {
+      background-color: rgba(253, 251, 248, 0.96);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .test-header-inner {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--primary-color);
+      letter-spacing: -0.5px;
+    }
+
+    .brand-logo .logo-icon {
+      font-size: 26px;
+      transition: transform 0.2s ease;
+    }
+    .brand-logo:hover .logo-icon {
+      transform: rotate(-10deg) scale(1.1);
+    }
+
+    .badge-sub {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary-color);
+      background-color: var(--primary-light);
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+    }
+
+    .header-quick-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-sm {
+      height: 34px;
+      padding: 0 12px;
+      font-size: 13px;
+      border-radius: 8px;
+    }
+
+    /* =============================================================
+       5. 테스트 메인 컨테이너 (샘플 상품 카드 리스트)
+       ============================================================= */
+    .main-wrap {
+      flex: 1;
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+      width: 100%;
+    }
+
+    .intro-banner {
+      background: linear-gradient(135deg, #FFF9F3 0%, #F5ECE5 100%);
+      border: 1px solid #EADBCE;
+      border-radius: var(--radius-lg);
+      padding: 24px 28px;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .intro-text h1 {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .intro-text p {
+      font-size: 14px;
+      color: var(--text-sub);
+      line-height: 1.5;
+    }
+
+    .intro-text .test-guide {
+      margin-top: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--primary-color);
+      background-color: rgba(141, 91, 76, 0.08);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-hint {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* 상품 카드 그리드 */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+
+    @media (max-width: 1024px) {
+      .cards-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .cards-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .cards-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* 카드 컴포넌트 */
+    .demo-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+      position: relative;
+    }
+
+    .demo-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+      border-color: #DFD5CB;
+    }
+
+    .demo-card.done {
+      opacity: 0.72;
+    }
+    .demo-card.done:hover {
+      opacity: 0.95;
+    }
+
+    .card-thumb-box {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      position: relative;
+      overflow: hidden;
+      background-color: var(--bg-input);
+    }
+
+    .card-thumb-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+
+    .demo-card:hover .card-thumb-img {
+      transform: scale(1.04);
+    }
+
+    .card-status-chip {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 2;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .card-badge-overlay {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 2;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary-color);
+      backdrop-filter: blur(4px);
+    }
+
+    .card-body {
+      padding: 14px 14px 16px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .card-category-lbl {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .card-title-lbl {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 6px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-meta-lbl {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .card-foot-lbl {
+      margin-top: auto;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .card-price-lbl {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .card-seller-lbl {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    /* =============================================================
+       6. [화면 2: 상세 팝업 모달] - 핵심 구현
+       ============================================================= */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(30, 20, 16, 0.6);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.25s ease;
+    }
+
+    .modal-backdrop.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* 모달 윈도우 컨테이너 */
+    .modal-window {
+      background-color: var(--bg-surface);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 540px;
+      max-height: 90vh;
+      box-shadow: var(--shadow-modal);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      transform: scale(0.92) translateY(12px);
+      transition: transform 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.15), opacity 0.25s ease;
+      opacity: 0;
+    }
+
+    .modal-backdrop.active .modal-window {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+
+    /* 모바일 바텀 시트 반응형 전환 (640px 이하) */
+    @media (max-width: 640px) {
+      .modal-backdrop {
+        padding: 0;
+        align-items: flex-end; /* 바닥에 붙임 */
+      }
+
+      .modal-window {
+        max-width: 100%;
+        max-height: 92vh;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        transform: translateY(100%);
+        transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s ease;
+      }
+
+      .modal-backdrop.active .modal-window {
+        transform: translateY(0);
+      }
+    }
+
+    /* 모바일 바텀시트 상단 드래그 핸들 (모바일 뷰 전용) */
+    .bottom-sheet-handle {
+      display: none;
+      width: 44px;
+      height: 5px;
+      background-color: rgba(255, 255, 255, 0.8);
+      border-radius: var(--radius-full);
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 25;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    @media (max-width: 640px) {
+      .bottom-sheet-handle {
+        display: block;
+      }
+    }
+
+    /* 팝업 닫기 (X) 플로팅 버튼 */
+    .modal-close-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-full);
+      background: rgba(44, 37, 35, 0.52);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-close-btn:hover {
+      background: rgba(44, 37, 35, 0.82);
+      transform: scale(1.08) rotate(90deg);
+    }
+
+    .modal-close-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* -------------------------------------------------------------
+       팝업 내부 스크롤 영역 (상단 이미지 + 하단 상세 컨텐츠)
+       ------------------------------------------------------------- */
+    .modal-scroll-area {
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      flex: 1;
+      -webkit-overflow-scrolling: touch;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 커스텀 스크롤바 */
+    .modal-scroll-area::-webkit-scrollbar {
+      width: 6px;
+    }
+    .modal-scroll-area::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .modal-scroll-area::-webkit-scrollbar-thumb {
+      background: #D8CEC4;
+      border-radius: var(--radius-full);
+    }
+    .modal-scroll-area::-webkit-scrollbar-thumb:hover {
+      background: #B6A89B;
+    }
+
+    /* -------------------------------------------------------------
+       (요구사항 2-상단): 상품 대표 이미지
+       - 상단 절반, 꽉 차고 안정적인 비율, object-fit: cover, 둥근 상단 모서리
+       ------------------------------------------------------------- */
+    .modal-hero-image-wrap {
+      width: 100%;
+      height: 320px;
+      position: relative;
+      background-color: var(--primary-light);
+      flex-shrink: 0;
+      overflow: hidden;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+
+    @media (max-width: 640px) {
+      .modal-hero-image-wrap {
+        height: 290px;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      }
+    }
+
+    .modal-hero-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.4s ease;
+    }
+
+    /* 이미지 하단 은은한 그라데이션 오버레이 */
+    .hero-image-gradient {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.28), transparent);
+      pointer-events: none;
+    }
+
+    /* -------------------------------------------------------------
+       (요구사항 2-하단): 하단 컨텐츠 (순서 정확 준수)
+       1) 판매자 정보
+       2) 판매 상태 뱃지 & 카테고리 태그
+       3) 상품명
+       4) 판매 위치 & 업로드 시간
+       5) 가격
+       6) 상품 설명
+       ------------------------------------------------------------- */
+    .modal-content-body {
+      padding: 22px 24px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      background-color: var(--bg-surface);
+    }
+
+    /* 1) 판매자 정보: 닉네임, 프로필 이미지, 판매 지역, 감자 매너온도 */
+    .seller-profile-section {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .seller-left-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .seller-avatar-wrap {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-full);
+      overflow: hidden;
+      background-color: var(--primary-light);
+      border: 2px solid #FFFFFF;
+      box-shadow: 0 2px 8px rgba(141, 91, 76, 0.15);
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .seller-avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .seller-meta {
+      min-width: 0;
+    }
+
+    .seller-nickname {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      line-height: 1.3;
+    }
+
+    .seller-badge-potato {
+      font-size: 11px;
+      font-weight: 600;
+      background: #FFF4E5;
+      color: #B45309;
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .seller-location {
+      font-size: 13px;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    /* 센스있는 감자 매너온도 컴포넌트 */
+    .potato-temp-widget {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      flex-shrink: 0;
+    }
+
+    .temp-info-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .temp-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .temp-value {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--primary-color);
+      letter-spacing: -0.3px;
+    }
+
+    .temp-emoji {
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .temp-progress-bar-bg {
+      width: 90px;
+      height: 5px;
+      background-color: var(--bg-input);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .temp-progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-gold) 0%, var(--primary-color) 100%);
+      border-radius: var(--radius-full);
+      transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .temp-subtext {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      text-decoration: underline;
+      cursor: help;
+    }
+
+    /* 2) 판매 상태 뱃지 & 카테고리 태그 */
+    .badges-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* 3) 상품명 (크고 굵은 제목) */
+    .product-title {
+      font-size: 21px;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.35;
+      letter-spacing: -0.4px;
+      word-break: keep-all;
+    }
+
+    @media (max-width: 640px) {
+      .product-title {
+        font-size: 19px;
+      }
+    }
+
+    /* 4) 판매 위치 & 업로드 시간 (연한 텍스트) */
+    .location-time-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .meta-separator {
+      display: inline-block;
+      width: 3px;
+      height: 3px;
+      background-color: var(--text-muted);
+      border-radius: 50%;
+      opacity: 0.6;
+    }
+
+    .meta-views {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* 5) 가격 (₩ 단위, 굵은 텍스트) */
+    .price-box {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      padding-top: 4px;
+    }
+
+    .price-amount {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.5px;
+    }
+
+    .price-unit {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .price-negotiable-badge {
+      margin-left: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-sub);
+      background-color: var(--bg-input);
+      padding: 3px 7px;
+      border-radius: 4px;
+    }
+
+    /* 6) 상품 설명 (상세 본문, 줄바꿈 보존) */
+    .product-description-wrap {
+      padding-top: 8px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .description-heading {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-bottom: 8px;
+    }
+
+    .product-description {
+      font-size: 15px;
+      color: var(--text-main);
+      line-height: 1.7;
+      white-space: pre-line; /* 줄바꿈 완벽 보존 */
+      word-break: break-word;
+    }
+
+    /* 직거래 안심 가이드 팁 박스 */
+    .safe-trade-banner {
+      margin-top: 18px;
+      padding: 12px 14px;
+      background-color: #FAF6F2;
+      border: 1px dashed #E5D5C5;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-sub);
+      line-height: 1.45;
+    }
+
+    .safe-icon {
+      font-size: 16px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    /* -------------------------------------------------------------
+       (요구사항 2-하단 고정): 맨 아래 하단 고정/액션바
+       - [관심 추가 ♡] 버튼 (클릭 시 토글 애니메이션/자리)
+       - [채팅 시작하기] 버튼 (브라운 강조 버튼, 자리)
+       ------------------------------------------------------------- */
+    .modal-bottom-action-bar {
+      position: sticky;
+      bottom: 0;
+      background-color: #FFFFFF;
+      border-top: 1px solid var(--border-color);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 30;
+      box-shadow: 0 -4px 16px rgba(115, 69, 55, 0.05);
+    }
+
+    @media (max-width: 640px) {
+      .modal-bottom-action-bar {
+        padding: 12px 16px;
+        padding-bottom: max(14px, env(safe-area-inset-bottom));
+      }
+    }
+
+    /* [관심 추가 ♡] 버튼 */
+    .btn-like-toggle {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 58px;
+      height: 48px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-surface);
+      color: var(--text-sub);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      flex-shrink: 0;
+      padding: 0 8px;
+      position: relative;
+    }
+
+    .btn-like-toggle:hover {
+      background-color: #FFF6F6;
+      border-color: #FFC9C9;
+      color: #E03131;
+    }
+
+    .btn-like-toggle:active {
+      transform: scale(0.92);
+    }
+
+    .like-icon-svg {
+      width: 22px;
+      height: 22px;
+      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), fill 0.2s ease, stroke 0.2s ease;
+      stroke: currentColor;
+      fill: transparent;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .like-count-text {
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+      margin-top: 2px;
+    }
+
+    /* 좋아요 활성화 상태 (하트 팝 애니메이션) */
+    .btn-like-toggle.liked {
+      color: #E03131;
+      border-color: #FFA8A8;
+      background-color: #FFF0F0;
+    }
+
+    .btn-like-toggle.liked .like-icon-svg {
+      fill: #E03131;
+      stroke: #E03131;
+      animation: heartPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.4);
+    }
+
+    @keyframes heartPop {
+      0% {
+        transform: scale(1);
+      }
+      40% {
+        transform: scale(1.42);
+      }
+      70% {
+        transform: scale(0.9);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    /* [채팅 시작하기] 버튼 */
+    .btn-start-chat {
+      flex: 1;
+      height: 48px;
+      background-color: var(--primary-color);
+      color: #FFFFFF;
+      font-size: 15px;
+      font-weight: 700;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(141, 91, 76, 0.24);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-start-chat:hover {
+      background-color: var(--primary-hover);
+      box-shadow: 0 6px 16px rgba(115, 69, 55, 0.32);
+    }
+
+    .btn-start-chat:active {
+      transform: scale(0.98);
+    }
+
+    .btn-start-chat.done-status {
+      background-color: var(--text-muted);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* =============================================================
+       7. 토스트 알림 컴포넌트
+       ============================================================= */
+    .toast-container {
+      position: fixed;
+      bottom: 84px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2000;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toast-pill {
+      background-color: rgba(44, 37, 35, 0.94);
+      color: #FFFFFF;
+      padding: 10px 20px;
+      border-radius: var(--radius-full);
+      font-size: 13.5px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+      animation: toastFadeIn 0.25s ease forwards;
+    }
+
+    @keyframes toastFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* =============================================================
+       8. 독립 테스트용 조작 패널
+       ============================================================= */
+    .demo-control-bar {
+      background-color: #FFFFFF;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .control-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .control-buttons-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =============================================================
+       A. 상단 헤더 & 빠른 테스트 네비게이션
+       ============================================================= -->
+  <header class="test-header">
+    <div class="test-header-inner">
+      <div class="brand-wrap">
+        <a href="javascript:void(0)" class="brand-logo" id="logoBtn">
+          <span class="logo-icon">🥔</span>
+          <span>감자</span>
+        </a>
+        <span class="badge-sub">화면 2: 상세 팝업 프로토타입</span>
+      </div>
+
+      <div class="header-quick-actions">
+        <button type="button" class="btn btn-sm btn-outline" id="quickSample1Btn">
+          📱 1. 판매중 모달
+        </button>
+        <button type="button" class="btn btn-sm btn-outline" id="quickSample2Btn">
+          🪑 2. 예약중 모달
+        </button>
+        <button type="button" class="btn btn-sm btn-outline" id="quickSample3Btn">
+          ☕ 3. 완료 모달
+        </button>
+        <button type="button" class="btn btn-sm btn-primary" id="openDirectModalBtn">
+          ✨ 팝업 열기 테스트
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- =============================================================
+       B. 메인 화면 (테스트 환경 및 상품 카드 목록)
+       ============================================================= -->
+  <main class="main-wrap">
+
+    <!-- 배너 설명 -->
+    <section class="intro-banner">
+      <div class="intro-text">
+        <h1><span>🥔</span> 감자 상품 상세 모달 팝업</h1>
+        <p>
+          아래 카드 중 원하는 상품을 클릭하거나 상단 테스트 버튼을 누르면 <strong>[화면 2: 상세 팝업]</strong>이 뜹니다.<br />
+          반응형 모달(데스크톱 중앙 팝업 / 모바일 바텀 시트), X버튼, 오버레이 클릭, <strong>ESC 키</strong>로 언제든 닫을 수 있습니다.
+        </p>
+        <div class="test-guide">
+          💡 단축키: [ESC] 팝업 닫기 | 하트 클릭 시 톡톡 튀는 햅틱 애니메이션
+        </div>
+      </div>
+    </section>
+
+    <!-- 빠른 상태별 원클릭 테스트 바 -->
+    <div class="demo-control-bar">
+      <div class="control-label">
+        <span>⚙️ 빠른 샘플 전환:</span>
+      </div>
+      <div class="control-buttons-group">
+        <button type="button" class="btn btn-sm btn-outline" onclick="GamzaDetailModal.openById(1)">
+          1번 아이패드 (판매중)
+        </button>
+        <button type="button" class="btn btn-sm btn-outline" onclick="GamzaDetailModal.openById(2)">
+          2번 원목 식탁 (예약중)
+        </button>
+        <button type="button" class="btn btn-sm btn-outline" onclick="GamzaDetailModal.openById(3)">
+          3번 파타고니아 (판매중)
+        </button>
+        <button type="button" class="btn btn-sm btn-outline" onclick="GamzaDetailModal.openById(4)">
+          4번 커피머신 (거래 완료)
+        </button>
+        <button type="button" class="btn btn-sm btn-gold" onclick="GamzaDetailModal.openRandom()">
+          🎲 랜덤 상품 열기
+        </button>
+      </div>
+    </div>
+
+    <!-- 카드 목록 그리드 -->
+    <div class="section-head">
+      <h2 class="section-title">
+        <span>📦</span> 상품을 클릭하여 상세 팝업을 확인해보세요
+      </h2>
+      <span class="section-hint">전체 6개 샘플 데이터</span>
+    </div>
+
+    <div class="cards-grid" id="sampleCardsGrid">
+      <!-- JavaScript로 카드 렌더링 -->
+    </div>
+  </main>
+
+  <!-- =============================================================
+       C. [화면 2: 상세 팝업 모달] 컴포넌트 마크업
+       ============================================================= -->
+  <div
+    class="modal-backdrop"
+    id="modalBackdrop"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modalProductTitle"
+    tabindex="-1"
+  >
+    <div class="modal-window" id="modalWindow">
+      
+      <!-- 모바일 바텀시트 상단 핸들 -->
+      <div class="bottom-sheet-handle" aria-hidden="true"></div>
+
+      <!-- 우측 상단 플로팅 닫기 (X) 버튼 -->
+      <button
+        type="button"
+        class="modal-close-btn"
+        id="modalCloseBtn"
+        aria-label="팝업 닫기"
+        title="닫기 (ESC)"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <!-- 스크롤 가능한 본문 영역 -->
+      <div class="modal-scroll-area" id="modalScrollArea">
+        
+        <!-- =====================================================
+             (요구사항 2-상단): 상품 대표 이미지
+             - 상단 절반 크기, 꽉 차고 안정적인 비율, object-fit: cover, 둥근 상단 모서리
+             ===================================================== -->
+        <div class="modal-hero-image-wrap">
+          <img
+            id="modalHeroImage"
+            class="modal-hero-image"
+            src=""
+            alt="상품 이미지"
+            loading="eager"
+          />
+          <div class="hero-image-gradient"></div>
+        </div>
+
+        <!-- =====================================================
+             (요구사항 2-하단): 컨텐츠 (요구된 순서 엄격 준수)
+             ===================================================== -->
+        <div class="modal-content-body">
+
+          <!-- 1) 판매자 정보: 닉네임, 프로필 이미지, 판매 지역, 센스있는 감자 매너온도 -->
+          <section class="seller-profile-section" aria-label="판매자 정보">
+            <div class="seller-left-group">
+              <div class="seller-avatar-wrap">
+                <img
+                  id="modalSellerProfileImg"
+                  class="seller-avatar-img"
+                  src=""
+                  alt="판매자 프로필"
+                />
+              </div>
+              <div class="seller-meta">
+                <div class="seller-nickname">
+                  <span id="modalSellerNickname">-</span>
+                  <span class="seller-badge-potato">동네감자</span>
+                </div>
+                <div class="seller-location" id="modalSellerLocation">-</div>
+              </div>
+            </div>
+
+            <!-- 센스있는 감자 매너온도 위젯 -->
+            <div class="potato-temp-widget" title="이웃 간의 거래 매너를 나타내는 감자온도입니다">
+              <div class="temp-info-row">
+                <span class="temp-label">감자온도</span>
+                <span class="temp-value" id="modalSellerTemp">36.5°C</span>
+                <span class="temp-emoji" id="modalSellerEmoji">🥔</span>
+              </div>
+              <div class="temp-progress-bar-bg" aria-hidden="true">
+                <div class="temp-progress-bar-fill" id="modalSellerTempBar" style="width: 50%;"></div>
+              </div>
+              <span class="temp-subtext">매너온도 기준 36.5°</span>
+            </div>
+          </section>
+
+          <!-- 2) 판매 상태 뱃지 & 카테고리 태그 -->
+          <div class="badges-row">
+            <span class="status-badge" id="modalStatusBadge">판매중</span>
+            <span class="category-tag" id="modalCategoryTag">디지털기기</span>
+          </div>
+
+          <!-- 3) 상품명 (크고 굵은 제목) -->
+          <h2 class="product-title" id="modalProductTitle">-</h2>
+
+          <!-- 4) 판매 위치 & 업로드 시간 (연한 텍스트) -->
+          <div class="location-time-row">
+            <span id="modalLocation">-</span>
+            <span class="meta-separator" aria-hidden="true"></span>
+            <span id="modalUploadedAt">-</span>
+            <div class="meta-views" id="modalMetaViews">
+              <span>관심 <span id="modalViewLikes">4</span></span>
+              <span class="meta-separator" aria-hidden="true"></span>
+              <span>조회 148</span>
+            </div>
+          </div>
+
+          <!-- 5) 가격 (₩ 단위, 굵은 텍스트) -->
+          <div class="price-box">
+            <span class="price-amount" id="modalPrice">-</span>
+            <span class="price-unit">원</span>
+            <span class="price-negotiable-badge">가격 제안 불가</span>
+          </div>
+
+          <!-- 6) 상품 설명 (상세 본문, 줄바꿈 보존) -->
+          <div class="product-description-wrap">
+            <div class="description-heading">상품 설명</div>
+            <p class="product-description" id="modalDescription">-</p>
+
+            <!-- 직거래 안심 가이드 -->
+            <div class="safe-trade-banner">
+              <span class="safe-icon">🛡️</span>
+              <div>
+                <strong>감자 안심 직거래 가이드</strong><br />
+                대화 시 서로 존중하는 매너를 지켜주세요. 직거래는 사람이 많은 지하철역 출구나 공공장소에서 권장합니다.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- =====================================================
+           (요구사항 2-맨 아래): 하단 고정 액션바
+           - [관심 추가 ♡] 버튼 (클릭 시 토글 애니메이션/자리)
+           - [채팅 시작하기] 버튼 (브라운 강조 버튼, 자리)
+           ===================================================== -->
+      <footer class="modal-bottom-action-bar">
+        <!-- [관심 추가 ♡] 버튼 -->
+        <button
+          type="button"
+          class="btn-like-toggle"
+          id="modalLikeBtn"
+          aria-label="관심 상품 추가"
+          aria-pressed="false"
+        >
+          <svg class="like-icon-svg" viewBox="0 0 24 24">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
+          <span class="like-count-text" id="modalLikeCount">4</span>
+        </button>
+
+        <!-- [채팅 시작하기] 버튼 -->
+        <button
+          type="button"
+          class="btn btn-primary btn-start-chat"
+          id="modalChatBtn"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span id="modalChatBtnText">채팅 시작하기</span>
+        </button>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- 토스트 알림 컨테이너 -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- =============================================================
+       9. 독립형 스크립트 (모달 컨트롤러 & 샘플 데이터 연동)
+       ============================================================= -->
+  <script>
+    (function (global) {
+      'use strict';
+
+      // -----------------------------------------------------------
+      // 1. 샘플 데이터 (design_system.md 4. 데이터 스키마 준수)
+      // -----------------------------------------------------------
+      const SAMPLE_PRODUCTS = [
+        {
+          id: 1,
+          title: "아이패드 에어 5세대 M1 64GB 스페이스그레이 풀박스",
+          category: "디지털기기",
+          price: 540000,
+          location: "역삼1동",
+          uploadedAt: "10분 전",
+          status: "판매중",
+          image: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=800&auto=format&fit=crop&q=60",
+          description: "실사용 6개월 미만 배터리 효율 98%입니다.\n케이스와 액정보호필름 항상 부착하여 기스 전혀 없습니다.\n직거래 역삼역 3번출구 희망합니다.\n구성품: 본체 + 충전기 + 정품 케이블 + 박스 풀구성입니다.",
+          seller: {
+            nickname: "감자튀김조아",
+            profileImg: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=60",
+            location: "역삼1동",
+            temperature: "37.8°C"
+          },
+          likes: 8
+        },
+        {
+          id: 2,
+          title: "북유럽 원목 원형 식탁 (의자 2개 포함)",
+          category: "가구/인테리어",
+          price: 120000,
+          location: "서초2동",
+          uploadedAt: "32분 전",
+          status: "예약중",
+          image: "https://images.unsplash.com/photo-1530018607912-eff2daa1bac4?w=800&auto=format&fit=crop&q=60",
+          description: "이사로 인해 급처분합니다.\n원목 특유의 따뜻한 베이지 색감이 예쁩니다.\n생활기스 약간 있으나 전반적으로 매우 깨끗해요.\n엘리베이터 있는 아파트이며 직접 오셔서 가져가셔야 합니다.",
+          seller: {
+            nickname: "행복한감자",
+            profileImg: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=60",
+            location: "서초2동",
+            temperature: "41.2°C"
+          },
+          likes: 15
+        },
+        {
+          id: 3,
+          title: "파타고니아 클래식 레트로-X 베스트 L사이즈",
+          category: "의류",
+          price: 95000,
+          location: "논현동",
+          uploadedAt: "1시간 전",
+          status: "판매중",
+          image: "https://images.unsplash.com/photo-1578932750294-f5075e85f44a?w=800&auto=format&fit=crop&q=60",
+          description: "작년 가을에 백화점에서 구매해 3회 착용 후 드라이클리닝 보관중입니다.\n오염 및 보풀 없이 상태 아주 좋습니다.\n쿨거래 하시면 택배비 포함으로 보내드립니다.",
+          seller: {
+            nickname: "따끈감자",
+            profileImg: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&auto=format&fit=crop&q=60",
+            location: "논현동",
+            temperature: "36.5°C"
+          },
+          likes: 5
+        },
+        {
+          id: 5,
+          title: "클린 코드(Clean Code) + 리팩터링 2판 세트",
+          category: "도서/티켓",
+          price: 38000,
+          location: "삼성동",
+          uploadedAt: "5시간 전",
+          status: "판매중",
+          image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800&auto=format&fit=crop&q=60",
+          description: "형광펜 및 필기 일절 없는 새 책 컨디션입니다.\n개발 입문 및 중급자 필독서로 추천드립니다.\n삼성역 또는 봉은사역 직거래 환영합니다.",
+          seller: {
+            nickname: "코딩감자",
+            profileImg: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=60",
+            location: "삼성동",
+            temperature: "39.5°C"
+          },
+          likes: 12
+        },
+        {
+          id: 6,
+          title: "소니 무선 노이즈 캔슬링 헤드폰 WH-1000XM4 블랙",
+          category: "디지털기기",
+          price: 210000,
+          location: "역삼2동",
+          uploadedAt: "8시간 전",
+          status: "예약중",
+          image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=60",
+          description: "재택근무용으로 구매했으나 실사용 10회 미만입니다.\n이어패드 헤짐 없고 배터리 수명 쌩쌩합니다.\n본체, 전용 하드케이스, 오디오 케이블, 항공기 어댑터 전부 있습니다.",
+          seller: {
+            nickname: "왕감자",
+            profileImg: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=200&auto=format&fit=crop&q=60",
+            location: "역삼2동",
+            temperature: "36.8°C"
+          },
+          likes: 19
+        }
+      ];
+
+      // 이미지 깨짐 방지용 SVG
+      const FALLBACK_IMAGE = "data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22600%22%20height%3D%22400%22%20viewBox%3D%220%200%20600%20400%22%3E%3Crect%20fill%3D%22%23F3EAE3%22%20width%3D%22600%22%20height%3D%22400%22%2F%3E%3Ctext%20fill%3D%22%238D5B4C%22%20font-family%3D%22sans-serif%22%20font-size%3D%2248%22%20font-weight%3D%22bold%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3E%F0%9F%A5%94%20%EA%B0%90%EC%9E%90%20%EC%82%AC%EC%A7%84%3C%2Ftext%3E%3C%2Fsvg%3E";
+
+      // -----------------------------------------------------------
+      // 2. 모달 컨트롤러 객체 (GamzaDetailModal)
+      // -----------------------------------------------------------
+      const GamzaDetailModal = {
+        currentProduct: null,
+        likedItems: new Set(), // 관심 등록된 id 목록
+        dom: {},
+
+        /**
+         * 초기화
+         */
+        init() {
+          this.cacheDom();
+          this.bindEvents();
+          this.renderSampleCards();
+          console.log('[GamzaDetailModal] 초기화 완료');
+        },
+
+        /**
+         * DOM 캐싱
+         */
+        cacheDom() {
+          this.dom.backdrop = document.getElementById('modalBackdrop');
+          this.dom.window = document.getElementById('modalWindow');
+          this.dom.closeBtn = document.getElementById('modalCloseBtn');
+          this.dom.scrollArea = document.getElementById('modalScrollArea');
+
+          // 모달 내부 데이터 필드들
+          this.dom.heroImg = document.getElementById('modalHeroImage');
+          this.dom.sellerAvatar = document.getElementById('modalSellerProfileImg');
+          this.dom.sellerNickname = document.getElementById('modalSellerNickname');
+          this.dom.sellerLocation = document.getElementById('modalSellerLocation');
+          this.dom.sellerTemp = document.getElementById('modalSellerTemp');
+          this.dom.sellerEmoji = document.getElementById('modalSellerEmoji');
+          this.dom.sellerTempBar = document.getElementById('modalSellerTempBar');
+
+          this.dom.statusBadge = document.getElementById('modalStatusBadge');
+          this.dom.categoryTag = document.getElementById('modalCategoryTag');
+          this.dom.productTitle = document.getElementById('modalProductTitle');
+          this.dom.location = document.getElementById('modalLocation');
+          this.dom.uploadedAt = document.getElementById('modalUploadedAt');
+          this.dom.price = document.getElementById('modalPrice');
+          this.dom.description = document.getElementById('modalDescription');
+          this.dom.viewLikes = document.getElementById('modalViewLikes');
+
+          // 하단 액션바
+          this.dom.likeBtn = document.getElementById('modalLikeBtn');
+          this.dom.likeCount = document.getElementById('modalLikeCount');
+          this.dom.chatBtn = document.getElementById('modalChatBtn');
+          this.dom.chatBtnText = document.getElementById('modalChatBtnText');
+
+          // 테스트 리스트 컨테이너
+          this.dom.cardsGrid = document.getElementById('sampleCardsGrid');
+          this.dom.toastContainer = document.getElementById('toastContainer');
+        },
+
+        /**
+         * 이벤트 리스너 등록
+         */
+        bindEvents() {
+          // 1. X 닫기 버튼
+          this.dom.closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.close();
+          });
+
+          // 2. 오버레이(배경) 클릭 시 닫기 (모달 윈도우 내부 클릭은 유지)
+          this.dom.backdrop.addEventListener('click', (e) => {
+            if (e.target === this.dom.backdrop) {
+              this.close();
+            }
+          });
+
+          // 3. ESC 키보드 입력 시 닫기
+          document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isOpen()) {
+              this.close();
+            }
+          });
+
+          // 4. 관심 추가 버튼 클릭 (토글)
+          this.dom.likeBtn.addEventListener('click', () => {
+            this.toggleLike();
+          });
+
+          // 5. 채팅 시작하기 버튼 클릭
+          this.dom.chatBtn.addEventListener('click', () => {
+            this.handleChat();
+          });
+
+          // 6. 외부 커스텀 이벤트 연동 (screen1 등에서 발생한 gamza:product-select 수신)
+          document.addEventListener('gamza:product-select', (e) => {
+            if (e.detail && e.detail.product) {
+              this.open(e.detail.product);
+            }
+          });
+
+          // 7. 상단 헤더 빠른 테스트 버튼들 바인딩
+          const quick1 = document.getElementById('quickSample1Btn');
+          const quick2 = document.getElementById('quickSample2Btn');
+          const quick3 = document.getElementById('quickSample3Btn');
+          const openDirect = document.getElementById('openDirectModalBtn');
+
+          if (quick1) quick1.addEventListener('click', () => this.openById(1));
+          if (quick2) quick2.addEventListener('click', () => this.openById(2));
+          if (quick3) quick3.addEventListener('click', () => this.openById(4));
+          if (openDirect) openDirect.addEventListener('click', () => this.openRandom());
+        },
+
+        /**
+         * 모달 열림 여부
+         * @returns {boolean}
+         */
+        isOpen() {
+          return this.dom.backdrop.classList.contains('active');
+        },
+
+        /**
+         * 특정 상품 데이터로 모달 열기
+         * @param {Object} product
+         */
+        open(product) {
+          if (!product) return;
+          this.currentProduct = product;
+
+          // 1. 상단 대표 이미지 세팅
+          this.dom.heroImg.src = product.image || FALLBACK_IMAGE;
+          this.dom.heroImg.onerror = () => {
+            this.dom.heroImg.src = FALLBACK_IMAGE;
+          };
+
+          // 2. 판매자 정보 (닉네임, 프로필, 위치, 감자 매너온도)
+          const seller = product.seller || {
+            nickname: '동네이웃',
+            profileImg: FALLBACK_IMAGE,
+            location: product.location || '우리동네',
+            temperature: '36.5°C'
+          };
+
+          this.dom.sellerAvatar.src = seller.profileImg || FALLBACK_IMAGE;
+          this.dom.sellerAvatar.onerror = () => {
+            this.dom.sellerAvatar.src = FALLBACK_IMAGE;
+          };
+          this.dom.sellerNickname.textContent = seller.nickname;
+          this.dom.sellerLocation.textContent = seller.location;
+
+          // 감자 매너온도 계산 및 렌더링
+          const tempNumber = parseFloat(seller.temperature) || 36.5;
+          this.dom.sellerTemp.textContent = `${tempNumber.toFixed(1)}°C`;
+
+          // 온도에 따른 위트있는 이모지 및 바 퍼센트 설정
+          let emoji = '🥔';
+          if (tempNumber >= 40.0) {
+            emoji = '🥔🔥'; // 아주 뜨끈한 매너
+          } else if (tempNumber >= 37.5) {
+            emoji = '🥔✨'; // 포슬포슬한 감자
+          } else if (tempNumber >= 36.5) {
+            emoji = '🥔🌱'; // 따뜻한 감자
+          } else {
+            emoji = '🥔';
+          }
+          this.dom.sellerEmoji.textContent = emoji;
+
+          // 기준 온도 30도 ~ 50도 기준 퍼센트 (최소 10%, 최대 100%)
+          const barPercent = Math.min(100, Math.max(10, ((tempNumber - 30) / 20) * 100));
+          this.dom.sellerTempBar.style.width = `${barPercent}%`;
+
+          // 3. 판매 상태 뱃지 & 카테고리 태그
+          this.updateStatusBadge(product.status);
+          this.dom.categoryTag.textContent = product.category || '기타';
+
+          // 4. 상품명
+          this.dom.productTitle.textContent = product.title;
+
+          // 5. 판매 위치 & 업로드 시간
+          this.dom.location.textContent = product.location;
+          this.dom.uploadedAt.textContent = product.uploadedAt;
+
+          // 6. 가격 (₩ 포맷팅)
+          this.dom.price.textContent = Number(product.price).toLocaleString('ko-KR');
+
+          // 7. 상품 설명 (줄바꿈 보존 확인)
+          this.dom.description.textContent = product.description;
+
+          // 8. 하단 액션바 초기화 (관심 추가 상태 및 카운트)
+          const isLiked = this.likedItems.has(product.id);
+          const baseLikes = product.likes || 4;
+          const currentLikes = isLiked ? baseLikes + 1 : baseLikes;
+
+          this.dom.likeCount.textContent = currentLikes;
+          this.dom.viewLikes.textContent = currentLikes;
+          this.dom.likeBtn.setAttribute('aria-pressed', isLiked ? 'true' : 'false');
+          if (isLiked) {
+            this.dom.likeBtn.classList.add('liked');
+          } else {
+            this.dom.likeBtn.classList.remove('liked');
+          }
+
+          // 상태에 따른 채팅 버튼 UI
+          if (product.status === '거래 완료') {
+            this.dom.chatBtn.classList.add('done-status');
+            this.dom.chatBtnText.textContent = '거래가 완료된 상품입니다';
+          } else if (product.status === '예약중') {
+            this.dom.chatBtn.classList.remove('done-status');
+            this.dom.chatBtnText.textContent = '예약중 • 채팅 보내기';
+          } else {
+            this.dom.chatBtn.classList.remove('done-status');
+            this.dom.chatBtnText.textContent = '채팅 시작하기';
+          }
+
+          // 모달 스크롤 위치 맨 위로 리셋
+          this.dom.scrollArea.scrollTop = 0;
+
+          // 배경 스크롤 방지 & 모달 표시
+          document.body.classList.add('modal-open');
+          this.dom.backdrop.classList.add('active');
+
+          // 닫기 버튼 포커스 (접근성 가이드)
+          setTimeout(() => {
+            this.dom.closeBtn.focus();
+          }, 50);
+
+          console.log('[GamzaDetailModal] 상품 열림:', product.id, product.title);
+        },
+
+        /**
+         * 뱃지 색상 및 텍스트 갱신 (design_system.md 규격)
+         * @param {'판매중' | '예약중' | '거래 완료'} status
+         */
+        updateStatusBadge(status) {
+          this.dom.statusBadge.className = 'status-badge';
+          this.dom.statusBadge.textContent = status;
+
+          if (status === '판매중') {
+            this.dom.statusBadge.classList.add('status-sale');
+          } else if (status === '예약중') {
+            this.dom.statusBadge.classList.add('status-reserved');
+          } else if (status === '거래 완료') {
+            this.dom.statusBadge.classList.add('status-done');
+          }
+        },
+
+        /**
+         * 모달 닫기
+         */
+        close() {
+          if (!this.isOpen()) return;
+
+          this.dom.backdrop.classList.remove('active');
+          document.body.classList.remove('modal-open');
+          console.log('[GamzaDetailModal] 닫힘');
+        },
+
+        /**
+         * ID 기반으로 열기 (테스트용)
+         * @param {number} id
+         */
+        openById(id) {
+          const target = SAMPLE_PRODUCTS.find((p) => p.id === id);
+          if (target) {
+            this.open(target);
+          }
+        },
+
+        /**
+         * 랜덤 상품 열기 (테스트용)
+         */
+        openRandom() {
+          const randomIndex = Math.floor(Math.random() * SAMPLE_PRODUCTS.length);
+          this.open(SAMPLE_PRODUCTS[randomIndex]);
+        },
+
+        /**
+         * 관심 추가 토글 핸들러 (애니메이션 & 카운트 증가)
+         */
+        toggleLike() {
+          if (!this.currentProduct) return;
+          const pid = this.currentProduct.id;
+          const isLiked = this.likedItems.has(pid);
+          let baseLikes = this.currentProduct.likes || 4;
+
+          if (isLiked) {
+            this.likedItems.delete(pid);
+            this.dom.likeBtn.classList.remove('liked');
+            this.dom.likeBtn.setAttribute('aria-pressed', 'false');
+            this.dom.likeCount.textContent = baseLikes;
+            this.dom.viewLikes.textContent = baseLikes;
+            this.showToast('💔 관심 목록에서 제외되었습니다.');
+          } else {
+            this.likedItems.add(pid);
+            this.dom.likeBtn.classList.add('liked');
+            this.dom.likeBtn.setAttribute('aria-pressed', 'true');
+            this.dom.likeCount.textContent = baseLikes + 1;
+            this.dom.viewLikes.textContent = baseLikes + 1;
+            this.showToast('🥔 관심 목록에 추가되었습니다! (찜 완료)');
+          }
+        },
+
+        /**
+         * 채팅 시작하기 핸들러
+         */
+        handleChat() {
+          if (!this.currentProduct) return;
+          if (this.currentProduct.status === '거래 완료') {
+            this.showToast('ℹ️ 이미 거래 완료된 상품이라 채팅을 걸 수 없습니다.');
+            return;
+          }
+
+          const sellerName = this.currentProduct.seller.nickname;
+          this.showToast(`💬 '${sellerName}' 님과의 감자 채팅방으로 이동합니다!`);
+        },
+
+        /**
+         * 토스트 메시지 팝업
+         * @param {string} message
+         */
+        showToast(message) {
+          const toast = document.createElement('div');
+          toast.className = 'toast-pill';
+          toast.textContent = message;
+          this.dom.toastContainer.appendChild(toast);
+
+          setTimeout(() => {
+            toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-10px)';
+            setTimeout(() => {
+              if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+              }
+            }, 300);
+          }, 2400);
+        },
+
+        /**
+         * 테스트용 카드 목록 렌더링
+         */
+        renderSampleCards() {
+          if (!this.dom.cardsGrid) return;
+
+          const cardsHtml = SAMPLE_PRODUCTS.map((item) => {
+            let statusClass = 'status-sale';
+            if (item.status === '예약중') statusClass = 'status-reserved';
+            if (item.status === '거래 완료') statusClass = 'status-done';
+
+            const isDone = item.status === '거래 완료' ? 'done' : '';
+
+            return `
+              <article class="demo-card ${isDone}" data-id="${item.id}" tabindex="0" role="button" aria-label="${item.title}">
+                <div class="card-thumb-box">
+                  <img
+                    src="${item.image}"
+                    alt="${item.title}"
+                    class="card-thumb-img"
+                    loading="lazy"
+                    onerror="this.onerror=null; this.src='${FALLBACK_IMAGE}';"
+                  />
+                  <span class="status-badge ${statusClass} card-status-chip">${item.status}</span>
+                  <span class="card-badge-overlay">${item.seller.temperature}</span>
+                </div>
+                <div class="card-body">
+                  <span class="card-category-lbl">${item.category}</span>
+                  <h3 class="card-title-lbl">${item.title}</h3>
+                  <div class="card-meta-lbl">
+                    <span>${item.location}</span>
+                    <span>•</span>
+                    <span>${item.uploadedAt}</span>
+                  </div>
+                  <div class="card-foot-lbl">
+                    <span class="card-price-lbl">${Number(item.price).toLocaleString('ko-KR')}원</span>
+                    <span class="card-seller-lbl">${item.seller.nickname}</span>
+                  </div>
+                </div>
+              </article>
+            `;
+          }).join('');
+
+          this.dom.cardsGrid.innerHTML = cardsHtml;
+
+          // 카드 클릭 시 해당 상품으로 모달 열기
+          this.dom.cardsGrid.querySelectorAll('.demo-card').forEach((card) => {
+            card.addEventListener('click', () => {
+              const pid = parseInt(card.dataset.id, 10);
+              this.openById(pid);
+            });
+
+            // 키보드 엔터/스페이스바 진입 지원
+            card.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                const pid = parseInt(card.dataset.id, 10);
+                this.openById(pid);
+              }
+            });
+          });
+        }
+      };
+
+      // 전역 객체 등록
+      global.GamzaDetailModal = GamzaDetailModal;
+
+      // DOM 로드 완료 후 실행
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => GamzaDetailModal.init());
+      } else {
+        GamzaDetailModal.init();
+      }
+
+    })(window);
+  </script>
+</body>
+</html>

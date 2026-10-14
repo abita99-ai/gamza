@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>감자 - 따뜻한 우리 동네 중고거래</title>
+  <!-- Supabase JS Client SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* -------------------------------------------------------------
+       1. 디자인 시스템 토큰 (CSS Variables)
+       ------------------------------------------------------------- */
+    :root {
+      --primary-color: #8D5B4C;        /* 구운 감자 메인 브라운 */
+      --primary-hover: #734537;        /* 호버 시 진한 브라운 */
+      --primary-light: #F3EAE3;        /* 연한 감자 크림 */
+      --accent-gold: #E5A93C;          /* 알감자 옐로우 포인트 */
+      --accent-gold-hover: #CF9227;
+
+      --bg-main: #FDFBF8;              /* 전체 배경 밝은 크림베이지 */
+      --bg-surface: #FFFFFF;           /* 카드 및 모달 배경 흰색 */
+      --bg-input: #F7F5F2;             /* 인풋 배경 */
+
+      --text-main: #2C2523;            /* 메인 텍스트 진한 흑갈색 */
+      --text-sub: #7A706A;             /* 서브 텍스트 그레이 */
+      --text-muted: #A39B94;           /* 날짜/힌트 텍스트 */
+      --border-color: #EFE9E2;         /* 테두리선 */
+      --border-focus: #8D5B4C;
+
+      /* 판매 상태 색상 (디자인 시스템 규격) */
+      --status-sale-bg: #EAF7EE;       /* 판매중 연한 초록 */
+      --status-sale-text: #1B7C3E;
+      --status-reserved-bg: #FFF3E0;   /* 예약중 연한 오렌지 */
+      --status-reserved-text: #E65100;
+      --status-done-bg: #F0F0F0;       /* 거래 완료 연한 회색 */
+      --status-done-text: #757575;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --radius-full: 9999px;
+
+      --shadow-sm: 0 2px 8px rgba(115, 69, 55, 0.06);
+      --shadow-md: 0 6px 20px rgba(115, 69, 55, 0.08);
+      --shadow-lg: 0 12px 36px rgba(115, 69, 55, 0.16);
+    }
+
+    /* -------------------------------------------------------------
+       2. 기본 리셋 및 글로벌 스타일
+       ------------------------------------------------------------- */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button, input {
+      font-family: inherit;
+    }
+
+    /* -------------------------------------------------------------
+       3. 버튼 공통 규격 (.btn, .btn-primary, .btn-outline, .btn-gold)
+       ------------------------------------------------------------- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 42px;
+      padding: 0 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background-color: var(--primary-color);
+      color: #FFFFFF;
+    }
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-outline {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+    .btn-outline:hover {
+      background-color: var(--bg-input);
+      border-color: var(--text-muted);
+    }
+
+    .btn-gold {
+      background-color: var(--accent-gold);
+      color: #FFFFFF;
+    }
+    .btn-gold:hover {
+      background-color: var(--accent-gold-hover);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* -------------------------------------------------------------
+       4. 상태 뱃지 (.status-badge)
+       ------------------------------------------------------------- */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      line-height: 1;
+    }
+
+    .status-badge.status-sale {
+      background-color: var(--status-sale-bg);
+      color: var(--status-sale-text);
+    }
+
+    .status-badge.status-reserved {
+      background-color: var(--status-reserved-bg);
+      color: var(--status-reserved-text);
+    }
+
+    .status-badge.status-done {
+      background-color: var(--status-done-bg);
+      color: var(--status-done-text);
+    }
+
+    /* -------------------------------------------------------------
+       5. 상단 GNB (Global Navigation Bar)
+       ------------------------------------------------------------- */
+    .gnb-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background-color: rgba(253, 251, 248, 0.94);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: 0 1px 4px rgba(115, 69, 55, 0.03);
+    }
+
+    .gnb-inner {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .gnb-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--primary-color);
+      cursor: pointer;
+      text-decoration: none;
+      flex-shrink: 0;
+      letter-spacing: -0.5px;
+    }
+
+    .gnb-logo .logo-icon {
+      font-size: 26px;
+      line-height: 1;
+      filter: drop-shadow(0 2px 4px rgba(141, 91, 76, 0.2));
+      transition: transform 0.2s ease;
+    }
+
+    .gnb-logo:hover .logo-icon {
+      transform: rotate(-10deg) scale(1.1);
+    }
+
+    .gnb-logo .logo-tagline {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-gold);
+      background-color: var(--primary-light);
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      margin-left: 2px;
+      vertical-align: middle;
+    }
+
+    /* 검색창 */
+    .gnb-search-wrap {
+      flex: 1;
+      max-width: 480px;
+      position: relative;
+    }
+
+    .gnb-search-box {
+      display: flex;
+      align-items: center;
+      background-color: var(--bg-input);
+      border: 1.5px solid transparent;
+      border-radius: var(--radius-full);
+      padding: 0 14px;
+      height: 42px;
+      transition: all 0.2s ease;
+    }
+
+    .gnb-search-box:focus-within {
+      background-color: var(--bg-surface);
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(141, 91, 76, 0.12);
+    }
+
+    .search-icon {
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+
+    .gnb-search-input {
+      width: 100%;
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      color: var(--text-main);
+      outline: none;
+    }
+
+    .gnb-search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .search-clear-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-radius: 50%;
+      transition: color 0.2s;
+    }
+
+    .search-clear-btn:hover {
+      color: var(--text-main);
+    }
+
+    .search-clear-btn.visible {
+      display: flex;
+    }
+
+    /* GNB 우측 액션 버튼들 */
+    .gnb-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    /* -------------------------------------------------------------
+       6. 메인 레이아웃 및 카테고리/필터 영역
+       ------------------------------------------------------------- */
+    .main-container {
+      max-width: 1140px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+      flex: 1;
+    }
+
+    /* 카테고리 리스트 */
+    .category-section {
+      margin-bottom: 24px;
+    }
+
+    .category-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-color) transparent;
+    }
+
+    .category-nav::-webkit-scrollbar {
+      height: 4px;
+    }
+    .category-nav::-webkit-scrollbar-thumb {
+      background-color: var(--border-color);
+      border-radius: 4px;
+    }
+
+    .category-btn {
+      padding: 8px 16px;
+      border-radius: var(--radius-full);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-sub);
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .category-btn:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+      background-color: var(--primary-light);
+    }
+
+    .category-btn.active {
+      background-color: var(--primary-color);
+      color: #FFFFFF;
+      border-color: var(--primary-color);
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(141, 91, 76, 0.25);
+    }
+
+    /* 필터 & 리스트 헤더 바 */
+    .list-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .list-title-group {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .list-title {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.3px;
+    }
+
+    .list-count {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .list-count strong {
+      color: var(--primary-color);
+      font-weight: 700;
+    }
+
+    /* 모던 토글 스위치 ('거래 가능만 보기') */
+    .toggle-filter-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .toggle-filter-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+      cursor: pointer;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #E2DBD4;
+      transition: background-color 0.25s ease;
+      border-radius: var(--radius-full);
+    }
+
+    .slider::before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: transform 0.25s ease;
+      border-radius: 50%;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+
+    .toggle-switch input:checked + .slider {
+      background-color: var(--primary-color);
+    }
+
+    .toggle-switch input:checked + .slider::before {
+      transform: translateX(20px);
+    }
+
+    .toggle-switch input:focus-visible + .slider {
+      box-shadow: 0 0 0 2px var(--accent-gold);
+    }
+
+    /* -------------------------------------------------------------
+       7. 반응형 상품 카드 그리드
+       ------------------------------------------------------------- */
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 22px;
+      transition: opacity 0.2s ease;
+    }
+
+    /* 상품 카드 컴포넌트 */
+    .product-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+    }
+
+    .product-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+      border-color: #D6C7BE;
+    }
+
+    /* 썸네일 영역 */
+    .card-thumb-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background-color: #F3EAE3;
+      overflow: hidden;
+    }
+
+    .card-thumb-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+
+    .product-card:hover .card-thumb-img {
+      transform: scale(1.04);
+    }
+
+    /* 썸네일 위 상태 뱃지 */
+    .card-status-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 2;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    }
+
+    /* 거래 완료 시 썸네일 딤 처리 */
+    .product-card.done .card-thumb-wrap::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.28);
+      pointer-events: none;
+    }
+
+    /* 카드 본문 영역 */
+    .card-content {
+      padding: 14px 14px 16px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .card-category {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-main);
+      line-height: 1.4;
+      margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-height: 42px;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .card-meta-dot {
+      display: inline-block;
+      width: 3px;
+      height: 3px;
+      background-color: var(--text-muted);
+      border-radius: 50%;
+    }
+
+    .card-bottom-row {
+      margin-top: auto;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .card-price {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.2px;
+    }
+
+    .card-seller {
+      font-size: 11px;
+      color: var(--text-sub);
+      background-color: var(--bg-input);
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    /* -------------------------------------------------------------
+       8. 결과 없음 (Empty State)
+       ------------------------------------------------------------- */
+    .empty-state {
+      grid-column: 1 / -1;
+      padding: 64px 20px;
+      text-align: center;
+      background-color: var(--bg-surface);
+      border: 1px dashed var(--border-color);
+      border-radius: var(--radius-lg);
+      margin: 12px 0;
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      line-height: 1;
+    }
+
+    .empty-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+
+    .empty-desc {
+      font-size: 14px;
+      color: var(--text-sub);
+      margin-bottom: 20px;
+    }
+
+    /* -------------------------------------------------------------
+       9. 반응형 미디어 쿼리 (데스크톱, 태블릿, 모바일)
+       ------------------------------------------------------------- */
+    /* 태블릿 가로 / 소형 데스크톱 */
+    @media (max-width: 1024px) {
+      .products-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+      .gnb-search-wrap {
+        max-width: 380px;
+      }
+    }
+
+    /* 태블릿 세로 */
+    @media (max-width: 768px) {
+      .products-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+      }
+      .gnb-inner {
+        padding: 10px 16px;
+        gap: 10px;
+      }
+      .gnb-logo .logo-tagline {
+        display: none;
+      }
+      .main-container {
+        padding: 16px 16px 40px;
+      }
+      .card-title {
+        font-size: 14px;
+        min-height: 38px;
+      }
+      .card-price {
+        font-size: 16px;
+      }
+      .card-seller {
+        display: none; /* 모바일에서 간결화 */
+      }
+    }
+
+    /* 모바일 */
+    @media (max-width: 520px) {
+      .gnb-inner {
+        flex-wrap: wrap;
+      }
+      .gnb-search-wrap {
+        order: 3;
+        width: 100%;
+        max-width: 100%;
+        margin-top: 4px;
+      }
+      .gnb-actions {
+        order: 2;
+      }
+      .btn {
+        height: 38px;
+        padding: 0 12px;
+        font-size: 13px;
+      }
+      .products-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+      .card-content {
+        padding: 10px 10px 12px;
+      }
+      .card-status-badge {
+        top: 6px;
+        left: 6px;
+        padding: 3px 6px;
+        font-size: 10px;
+      }
+      .list-title {
+        font-size: 17px;
+      }
+    }
+
+    /* 극소형 모바일 */
+    @media (max-width: 360px) {
+      .products-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* -------------------------------------------------------------
+       10. 푸터 (Footer)
+       ------------------------------------------------------------- */
+    .gamza-footer {
+      border-top: 1px solid var(--border-color);
+      background-color: var(--bg-surface);
+      padding: 32px 20px;
+      color: var(--text-sub);
+      font-size: 13px;
+      margin-top: auto;
+    }
+    .gamza-footer-inner {
+      max-width: 1140px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .footer-links {
+      display: flex;
+      gap: 16px;
+    }
+    .footer-links a:hover {
+      color: var(--primary-color);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =============================================================
+       1. GNB 헤더 (로고, 실시간 검색, 글쓰기, 로그인)
+       ============================================================= -->
+  <header class="gnb-header">
+    <div class="gnb-inner">
+      <!-- 로고 -->
+      <a href="#" class="gnb-logo" id="logoBtn" aria-label="감자 홈으로 이동">
+        <span class="logo-icon">🥔</span>
+        <span>감자</span>
+        <span class="logo-tagline">동네마켓</span>
+      </a>
+
+      <!-- 실시간 검색창 -->
+      <div class="gnb-search-wrap">
+        <div class="gnb-search-box">
+          <span class="search-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </span>
+          <input
+            type="text"
+            id="searchInput"
+            class="gnb-search-input"
+            placeholder="물품명이나 동네를 검색해보세요"
+            autocomplete="off"
+            aria-label="상품 실시간 검색"
+          >
+          <button type="button" id="searchClearBtn" class="search-clear-btn" aria-label="검색어 지우기">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 액션 버튼들 -->
+      <div class="gnb-actions">
+        <button type="button" class="btn btn-primary" id="writeBtn" aria-label="새 상품 판매글 쓰기">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          <span>글쓰기</span>
+        </button>
+        <button type="button" class="btn btn-outline" id="loginBtn" aria-label="로그인 (준비중)">
+          <span>로그인</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- =============================================================
+       2. 메인 컨텐츠 영역
+       ============================================================= -->
+  <main class="main-container">
+
+    <!-- 카테고리 필터 버튼 네비게이션 -->
+    <section class="category-section" aria-label="상품 카테고리 선택">
+      <nav class="category-nav" id="categoryNav">
+        <!-- JS에서 동적 렌더링되거나 초기 버튼들 -->
+        <button type="button" class="category-btn active" data-category="전체">전체</button>
+        <button type="button" class="category-btn" data-category="디지털기기">디지털기기</button>
+        <button type="button" class="category-btn" data-category="가구/인테리어">가구/인테리어</button>
+        <button type="button" class="category-btn" data-category="의류">의류</button>
+        <button type="button" class="category-btn" data-category="생활가전">생활가전</button>
+        <button type="button" class="category-btn" data-category="도서/티켓">도서/티켓</button>
+        <button type="button" class="category-btn" data-category="기타">기타</button>
+      </nav>
+    </section>
+
+    <!-- 목록 헤더 및 토글 필터 -->
+    <div class="list-header-bar">
+      <div class="list-title-group">
+        <h1 class="list-title" id="currentCategoryTitle">전체 매물</h1>
+        <span class="list-count" id="productCountInfo">총 <strong>6</strong>개</span>
+      </div>
+
+      <!-- '거래 가능만 보기' 토글 스위치 -->
+      <label class="toggle-filter-wrap" for="availableOnlyToggle">
+        <span class="toggle-filter-label">거래 가능만 보기</span>
+        <div class="toggle-switch">
+          <input type="checkbox" id="availableOnlyToggle" aria-label="판매중인 거래 가능 상품만 보기">
+          <span class="slider"></span>
+        </div>
+      </label>
+    </div>
+
+    <!-- 상품 카드 그리드 컨테이너 -->
+    <section class="products-grid" id="productsGrid" aria-label="등록된 중고 상품 목록">
+      <!-- JS renderProducts() 함수를 통해 카드들이 렌더링됩니다 -->
+    </section>
+
+  </main>
+
+  <!-- 푸터 -->
+  <footer class="gamza-footer">
+    <div class="gamza-footer-inner">
+      <div class="footer-info">
+        <strong>🥔 감자 마켓</strong> &middot; 따뜻한 이웃과의 신뢰 기반 중고거래 플랫폼
+      </div>
+      <div class="footer-links">
+        <a href="#terms">이용약관</a>
+        <a href="#privacy">개인정보처리방침</a>
+        <a href="#location">위치기반서비스</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- =============================================================
+       3. 독립형 JS 모듈 (GamzaList)
+       - 외부 라이브러리 없이 순수 JavaScript로 동작
+       - 모듈화된 객체 구조로 다른 컴포넌트(모달, 글쓰기 뷰)와 쉽게 병합 가능
+       ============================================================= -->
+  <script>
+    /**
+     * @typedef {Object} SellerInfo
+     * @property {string} nickname
+     * @property {string} profileImg
+     * @property {string} location
+     * @property {string} temperature
+     *
+     * @typedef {Object} Product
+     * @property {number} id
+     * @property {string} title
+     * @property {string} category
+     * @property {number} price
+     * @property {string} location
+     * @property {string} uploadedAt
+     * @property {'판매중' | '예약중' | '거래 완료'} status
+     * @property {string} image
+     * @property {string} description
+     * @property {SellerInfo} seller
+     */
+
+    (function (global) {
+      'use strict';
+
+      // 1. 초기 기본 상품 6종 데이터 (design_system.md 스키마 준수)
+      const INITIAL_PRODUCTS = [
+        {
+          id: 1,
+          title: "아이패드 에어 5세대 M1 64GB 스페이스그레이 풀박스",
+          category: "디지털기기",
+          price: 540000,
+          location: "역삼1동",
+          uploadedAt: "10분 전",
+          status: "판매중",
+          image: "https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=800&auto=format&fit=crop&q=60",
+          description: "실사용 6개월 미만 배터리 효율 98%입니다. 케이스와 액정보호필름 항상 부착하여 기스 전혀 없습니다. 직거래 역삼역 3번출구 희망합니다.",
+          seller: {
+            nickname: "감자튀김조아",
+            profileImg: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=60",
+            location: "역삼1동",
+            temperature: "37.8°C"
+          }
+        },
+        {
+          id: 2,
+          title: "북유럽 원목 원형 식탁 (의자 2개 포함)",
+          category: "가구/인테리어",
+          price: 120000,
+          location: "서초2동",
+          uploadedAt: "32분 전",
+          status: "예약중",
+          image: "https://images.unsplash.com/photo-1530018607912-eff2daa1bac4?w=800&auto=format&fit=crop&q=60",
+          description: "이사로 인해 급처분합니다. 생활기스 약간 있으나 전반적으로 매우 깨끗해요. 직접 오셔서 가져가셔야 합니다.",
+          seller: {
+            nickname: "행복한감자",
+            profileImg: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=60",
+            location: "서초2동",
+            temperature: "41.2°C"
+          }
+        },
+        {
+          id: 3,
+          title: "파타고니아 클래식 레트로-X 베스트 L사이즈",
+          category: "의류",
+          price: 95000,
+          location: "논현동",
+          uploadedAt: "1시간 전",
+          status: "판매중",
+          image: "https://images.unsplash.com/photo-1578932750294-f5075e85f44a?w=800&auto=format&fit=crop&q=60",
+          description: "작년 가을에 구매해 3회 착용 후 보관중입니다. 오염 및 보풀 없이 상태 좋습니다. 쿨거래 시 택포 가능합니다.",
+          seller: {
+            nickname: "따끈감자",
+            profileImg: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&auto=format&fit=crop&q=60",
+            location: "논현동",
+            temperature: "36.5°C"
+          }
+        },
+        {
+          id: 5,
+          title: "클린 코드(Clean Code) + 리팩터링 2판 세트",
+          category: "도서/티켓",
+          price: 38000,
+          location: "삼성동",
+          uploadedAt: "5시간 전",
+          status: "판매중",
+          image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800&auto=format&fit=crop&q=60",
+          description: "필기감 및 접힘 일절 없는 새 책 수준입니다. 개발 입문 및 중급자 필독서 세트입니다.",
+          seller: {
+            nickname: "코딩감자",
+            profileImg: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=60",
+            location: "삼성동",
+            temperature: "39.5°C"
+          }
+        },
+        {
+          id: 6,
+          title: "소니 무선 노이즈 캔슬링 헤드폰 WH-1000XM4 블랙",
+          category: "디지털기기",
+          price: 210000,
+          location: "역삼2동",
+          uploadedAt: "8시간 전",
+          status: "예약중",
+          image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=60",
+          description: "재택근무용으로 구매했으나 에어팟을 주로 써서 방출합니다. 본체 및 전용 파우치, 케이블 완비.",
+          seller: {
+            nickname: "왕감자",
+            profileImg: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=200&auto=format&fit=crop&q=60",
+            location: "역삼2동",
+            temperature: "36.8°C"
+          }
+        }
+      ];
+
+      // fallback placeholder SVG for images that fail to load
+      const FALLBACK_IMAGE = "data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22400%22%20height%3D%22400%22%20viewBox%3D%220%200%20400%20400%22%3E%3Crect%20fill%3D%22%23F3EAE3%22%20width%3D%22400%22%20height%3D%22400%22%2F%3E%3Ctext%20fill%3D%22%238D5B4C%22%20font-family%3D%22sans-serif%22%20font-size%3D%2250%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3E%F0%9F%A5%94%20%EA%B0%90%EC%9E%90%3C%2Ftext%3E%3C%2Fsvg%3E";
+
+      // =========================================================================
+      // Supabase 클라이언트 설정 (Gamza DB)
+      // =========================================================================
+      const SUPABASE_URL = "https://ejflinlmxafturvjkqhc.supabase.co";
+      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqZmxpbmxteGFmdHVydmprcWhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5MjA4MjgsImV4cCI6MjEwNzQ5NjgyOH0.6O6GUqHUpcJxWUYk5ClYt3SwNadOSXE6EuCcAlTnwww";
+
+      let supabase = null;
+      if (window.supabase && typeof window.supabase.createClient === "function") {
+        try {
+          supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch (e) {
+          console.warn("[GamzaList] Supabase client init error:", e);
+        }
+      }
+
+      function formatTimeAgo(isoDateString) {
+        if (!isoDateString) return "방금 전";
+        const date = new Date(isoDateString);
+        if (isNaN(date.getTime())) return isoDateString;
+        const now = new Date();
+        const diffSec = Math.floor((now - date) / 1000);
+        if (diffSec < 60) return "방금 전";
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return `${diffMin}분 전`;
+        const diffHour = Math.floor(diffMin / 60);
+        if (diffHour < 24) return `${diffHour}시간 전`;
+        const diffDay = Math.floor(diffHour / 24);
+        if (diffDay < 30) return `${diffDay}일 전`;
+        return date.toLocaleDateString('ko-KR');
+      }
+
+      /**
+       * GamzaList 모듈 정의
+       */
+      const GamzaList = {
+        products: [...INITIAL_PRODUCTS],
+        currentCategory: '전체',
+        searchKeyword: '',
+        onlyAvailable: false,
+
+        // DOM 요소 캐시
+        dom: {},
+
+        /**
+         * 초기화 메서드
+         */
+        async init() {
+          this.cacheDom();
+          this.bindEvents();
+          this.render();
+          await this.loadProductsFromSupabase();
+        },
+
+        async loadProductsFromSupabase() {
+          if (!supabase) return;
+          try {
+            const { data, error } = await supabase
+              .from('products')
+              .select(`
+                id,
+                seller_id,
+                title,
+                category,
+                price,
+                is_free_share,
+                trade_location,
+                status,
+                image_url,
+                description,
+                likes_count,
+                view_count,
+                created_at,
+                seller:seller_id (
+                  id,
+                  nickname,
+                  activity_area,
+                  profile_image_url,
+                  manner_temperature
+                )
+              `)
+              .order('id', { ascending: false });
+
+            if (!error && data && data.length > 0) {
+              this.products = data.map(item => ({
+                id: item.id,
+                title: item.title,
+                category: item.category,
+                price: item.price,
+                location: item.trade_location,
+                uploadedAt: formatTimeAgo(item.created_at),
+                status: item.status,
+                image: item.image_url || FALLBACK_IMAGE,
+                description: item.description,
+                seller: {
+                  nickname: item.seller?.nickname || "감자러버",
+                  profileImg: item.seller?.profile_image_url || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=60",
+                  location: item.seller?.activity_area || item.trade_location,
+                  temperature: item.seller?.manner_temperature ? `${item.seller.manner_temperature}°C` : "36.5°C"
+                }
+              }));
+              this.render();
+            }
+          } catch (err) {
+            console.warn('[GamzaList] Supabase fetch error:', err);
+          }
+        },
+
+        /**
+         * 주요 DOM 요소 캐싱
+         */
+        cacheDom() {
+          this.dom.searchInput = document.getElementById('searchInput');
+          this.dom.searchClearBtn = document.getElementById('searchClearBtn');
+          this.dom.categoryNav = document.getElementById('categoryNav');
+          this.dom.categoryBtns = document.querySelectorAll('.category-btn');
+          this.dom.availableOnlyToggle = document.getElementById('availableOnlyToggle');
+          this.dom.productsGrid = document.getElementById('productsGrid');
+          this.dom.productCountInfo = document.getElementById('productCountInfo');
+          this.dom.currentCategoryTitle = document.getElementById('currentCategoryTitle');
+          this.dom.writeBtn = document.getElementById('writeBtn');
+          this.dom.loginBtn = document.getElementById('loginBtn');
+          this.dom.logoBtn = document.getElementById('logoBtn');
+        },
+
+        /**
+         * 이벤트 리스너 바인딩
+         */
+        bindEvents() {
+          // 1. 실시간 검색 입력
+          this.dom.searchInput.addEventListener('input', (e) => {
+            this.handleSearch(e.target.value);
+          });
+
+          // 2. 검색어 삭제 버튼
+          this.dom.searchClearBtn.addEventListener('click', () => {
+            this.clearSearch();
+          });
+
+          // 3. 카테고리 탭 클릭
+          this.dom.categoryNav.addEventListener('click', (e) => {
+            const btn = e.target.closest('.category-btn');
+            if (!btn) return;
+            const category = btn.dataset.category;
+            this.setCategory(category);
+          });
+
+          // 4. '거래 가능만 보기' 토글 스위치 변경
+          this.dom.availableOnlyToggle.addEventListener('change', (e) => {
+            this.setOnlyAvailable(e.target.checked);
+          });
+
+          // 5. 상품 카드 클릭 (상세 뷰 / 모달 연동을 위한 이벤트 위임)
+          this.dom.productsGrid.addEventListener('click', (e) => {
+            const card = e.target.closest('.product-card');
+            if (!card) return;
+            const productId = parseInt(card.dataset.id, 10);
+            this.handleProductClick(productId);
+          });
+
+          // 6. 글쓰기 버튼 클릭
+          this.dom.writeBtn.addEventListener('click', () => {
+            this.handleWriteClick();
+          });
+
+          // 7. 로그인 버튼 클릭
+          this.dom.loginBtn.addEventListener('click', () => {
+            alert('로그인 기능은 준비 중입니다 🥔');
+          });
+
+          // 8. 로고 클릭 시 필터 전체 리셋
+          this.dom.logoBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.resetFilters();
+          });
+        },
+
+        /**
+         * 검색어 변경 핸들러
+         * @param {string} keyword
+         */
+        handleSearch(keyword) {
+          this.searchKeyword = keyword.trim().toLowerCase();
+          if (this.searchKeyword.length > 0) {
+            this.dom.searchClearBtn.classList.add('visible');
+          } else {
+            this.dom.searchClearBtn.classList.remove('visible');
+          }
+          this.render();
+        },
+
+        /**
+         * 검색어 초기화
+         */
+        clearSearch() {
+          this.dom.searchInput.value = '';
+          this.searchKeyword = '';
+          this.dom.searchClearBtn.classList.remove('visible');
+          this.dom.searchInput.focus();
+          this.render();
+        },
+
+        /**
+         * 카테고리 설정
+         * @param {string} category
+         */
+        setCategory(category) {
+          if (this.currentCategory === category) return;
+          this.currentCategory = category;
+
+          // 카테고리 활성화 버튼 스타일 갱신
+          this.dom.categoryBtns.forEach((btn) => {
+            if (btn.dataset.category === category) {
+              btn.classList.add('active');
+            } else {
+              btn.classList.remove('active');
+            }
+          });
+
+          // 섹션 헤더 제목 갱신
+          if (category === '전체') {
+            this.dom.currentCategoryTitle.textContent = '전체 매물';
+          } else {
+            this.dom.currentCategoryTitle.textContent = `${category} 매물`;
+          }
+
+          this.render();
+        },
+
+        /**
+         * '거래 가능만 보기' 설정
+         * @param {boolean} isChecked
+         */
+        setOnlyAvailable(isChecked) {
+          this.onlyAvailable = isChecked;
+          this.render();
+        },
+
+        /**
+         * 필터링된 상품 목록 반환
+         * @returns {Product[]}
+         */
+        getFilteredProducts() {
+          return this.products.filter((product) => {
+            // 거래 완료 상품은 목록에서 제외 (거래완료 리스트 삭제 정책)
+            if (product.status === '거래 완료') {
+              return false;
+            }
+
+            // 카테고리 필터
+            if (this.currentCategory !== '전체' && product.category !== this.currentCategory) {
+              return false;
+            }
+
+            // 거래 가능만 보기 필터 ('판매중'만 통과)
+            if (this.onlyAvailable && product.status !== '판매중') {
+              return false;
+            }
+
+            // 검색어 필터 (제목 또는 위치에 포함)
+            if (this.searchKeyword) {
+              const inTitle = product.title.toLowerCase().includes(this.searchKeyword);
+              const inLocation = product.location.toLowerCase().includes(this.searchKeyword);
+              const inCategory = product.category.toLowerCase().includes(this.searchKeyword);
+              if (!inTitle && !inLocation && !inCategory) {
+                return false;
+              }
+            }
+
+            return true;
+          });
+        },
+
+        /**
+         * 가격 ₩ 및 쉼표 포맷팅 함수
+         * @param {number} price
+         * @returns {string}
+         */
+        formatPrice(price) {
+          return `${Number(price).toLocaleString('ko-KR')}원`;
+        },
+
+        /**
+         * 상태별 CSS 클래스명 반환
+         * @param {string} status
+         * @returns {string}
+         */
+        getStatusClass(status) {
+          switch (status) {
+            case '판매중':
+              return 'status-sale';
+            case '예약중':
+              return 'status-reserved';
+            case '거래 완료':
+              return 'status-done';
+            default:
+              return '';
+          }
+        },
+
+        /**
+         * 상품 카드 템플릿 렌더링
+         * @param {Product} item
+         * @returns {string}
+         */
+        createCardHTML(item) {
+          const statusClass = this.getStatusClass(item.status);
+          const isDoneClass = item.status === '거래 완료' ? 'done' : '';
+
+          return `
+            <article class="product-card ${isDoneClass}" data-id="${item.id}" tabindex="0" role="button" aria-label="${item.title}">
+              <div class="card-thumb-wrap">
+                <img
+                  src="${item.image}"
+                  alt="${item.title}"
+                  class="card-thumb-img"
+                  loading="lazy"
+                  onerror="this.onerror=null; this.src='${FALLBACK_IMAGE}';"
+                />
+                <span class="status-badge ${statusClass} card-status-badge">${item.status}</span>
+              </div>
+              <div class="card-content">
+                <span class="card-category">${item.category}</span>
+                <h3 class="card-title">${item.title}</h3>
+                <div class="card-meta">
+                  <span>${item.location}</span>
+                  <span class="card-meta-dot"></span>
+                  <span>${item.uploadedAt}</span>
+                </div>
+                <div class="card-bottom-row">
+                  <span class="card-price">${this.formatPrice(item.price)}</span>
+                  <span class="card-seller">${item.seller ? item.seller.nickname : '동네이웃'}</span>
+                </div>
+              </div>
+            </article>
+          `;
+        },
+
+        /**
+         * 빈 결과 UI 생성
+         * @returns {string}
+         */
+        createEmptyHTML() {
+          return `
+            <div class="empty-state">
+              <div class="empty-icon">🥔</div>
+              <h3 class="empty-title">조건에 맞는 상품이 없어요</h3>
+              <p class="empty-desc">검색어를 변경하시거나 '거래 가능만 보기' 및 카테고리 필터를 조정해보세요.</p>
+              <button type="button" class="btn btn-outline" id="resetFiltersBtn">
+                필터 초기화
+              </button>
+            </div>
+          `;
+        },
+
+        /**
+         * 화면 렌더링
+         */
+        render() {
+          const filtered = this.getFilteredProducts();
+
+          // 개수 표시 갱신
+          this.dom.productCountInfo.innerHTML = `총 <strong>${filtered.length}</strong>개`;
+
+          if (filtered.length === 0) {
+            this.dom.productsGrid.innerHTML = this.createEmptyHTML();
+            // 동적 생성된 필터 초기화 버튼 바인딩
+            const resetBtn = document.getElementById('resetFiltersBtn');
+            if (resetBtn) {
+              resetBtn.addEventListener('click', () => this.resetFilters());
+            }
+          } else {
+            this.dom.productsGrid.innerHTML = filtered.map((item) => this.createCardHTML(item)).join('');
+          }
+        },
+
+        /**
+         * 모든 필터 초기화
+         */
+        resetFilters() {
+          this.searchKeyword = '';
+          this.dom.searchInput.value = '';
+          this.dom.searchClearBtn.classList.remove('visible');
+
+          this.onlyAvailable = false;
+          this.dom.availableOnlyToggle.checked = false;
+
+          this.setCategory('전체');
+        },
+
+        /**
+         * 상품 카드 클릭 핸들러 (상세 모달 등 연동을 위한 이벤트 디스패치)
+         * @param {number} productId
+         */
+        handleProductClick(productId) {
+          const product = this.products.find((p) => p.id === productId);
+          if (!product) return;
+
+          // 외부 컴포넌트(모달 등)와 결합할 수 있도록 커스텀 이벤트 발송
+          const event = new CustomEvent('gamza:product-select', {
+            detail: { product },
+            bubbles: true
+          });
+          document.dispatchEvent(event);
+
+          // 독립 실행 시 시각적 피드백 제공 (간단한 토스트 알림 역할)
+          console.log('[Gamza] 상품 클릭됨:', product);
+          alert(`🥔 [상품 상세]\n- 상품명: ${product.title}\n- 가격: ${this.formatPrice(product.price)}\n- 상태: ${product.status}\n- 판매자: ${product.seller.nickname} (${product.seller.temperature})\n- 설명: ${product.description}`);
+        },
+
+        /**
+         * 글쓰기 버튼 클릭 핸들러
+         */
+        handleWriteClick() {
+          const event = new CustomEvent('gamza:write-click', { bubbles: true });
+          document.dispatchEvent(event);
+          window.location.href = 'screen3_write.html';
+        },
+
+        /**
+         * 외부에서 새 상품 추가 시 사용할 수 있는 퍼블릭 API
+         * @param {Product} newProduct
+         */
+        addProduct(newProduct) {
+          this.products.unshift(newProduct);
+          this.render();
+        }
+      };
+
+      // 전역 객체로 노출하여 다른 스크립트나 모달 컴포넌트에서 연동 가능하도록 함
+      global.GamzaList = GamzaList;
+
+      // DOM 로드 완료 시 초기화 실행
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => GamzaList.init());
+      } else {
+        GamzaList.init();
+      }
+
+    })(window);
+  </script>
+</body>
+</html>

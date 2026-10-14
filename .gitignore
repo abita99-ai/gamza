@@ -1,0 +1,30 @@
+# Environment variables & secrets (CRITICAL)
+.env
+.env.*
+*.env
+*.env.txt
+!.env.example
+.env.local
+.env.production
+.env.development
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Node / Dependencies / Build (if added in the future)
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
